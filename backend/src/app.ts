@@ -1,5 +1,14 @@
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
+import express from 'express';
+import cors from 'cors';
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+export { app };
 
 export const initDb = async () => {
   const db = await open({
