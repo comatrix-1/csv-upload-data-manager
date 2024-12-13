@@ -11,6 +11,7 @@ describe("Data Controller", () => {
     // Mock the `initDb` function to return a test database instance
     mockDb = {
       all: jest.fn(),
+      get: jest.fn(), // Mock the `get` method for count query
       exec: jest.fn(),
     };
     (initDb as jest.Mock).mockResolvedValue(mockDb);
@@ -34,8 +35,11 @@ describe("Data Controller", () => {
     await mockDb.exec("DELETE FROM data");
   });
 
-  it("should fetch paginated data", async () => {
-    // Mock the `all` method to return test data
+  it("should fetch paginated data with total records and pages", async () => {
+    // Mock the `get` method for the total records count query
+    mockDb.get.mockResolvedValueOnce({ count: 5 });
+
+    // Mock the `all` method to return test data for the first page
     mockDb.all.mockResolvedValueOnce([
       { name: "Item 1", value: "Value 1" },
       { name: "Item 2", value: "Value 2" },
@@ -47,11 +51,11 @@ describe("Data Controller", () => {
       .expect("Content-Type", /json/)
       .expect(200);
 
-    expect(response.body.length).toBe(3);
-    expect(response.body[0]).toMatchObject({
-      name: "Item 1",
-      value: "Value 1",
-    });
+    expect(response.body.data.length).toBe(3);
+    expect(response.body.totalRecords).toBe(5);
+    expect(response.body.totalPages).toBe(2); // 5 items, 3 per page = 2 pages
+    expect(response.body.currentPage).toBe(1);
+    expect(response.body.limit).toBe(3);
   });
 
   it("should return an error if an issue occurs while fetching data", async () => {
