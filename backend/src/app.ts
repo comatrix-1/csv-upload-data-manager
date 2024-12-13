@@ -1,7 +1,5 @@
-import sqlite3 from "sqlite3";
-import { open } from "sqlite";
-import express from 'express';
-import cors from 'cors';
+import express from "express";
+import cors from "cors";
 import { dataRouter } from "./routes/dataRoutes";
 
 const app = express();
@@ -10,24 +8,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/api/data', dataRouter);
+app.use("/api/data", dataRouter);
 
 export { app };
-
-export const initDb = async () => {
-  const db = await open({
-    filename: "./data.db",
-    driver: sqlite3.Database,
-  });
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS data (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      field1 TEXT,
-      field2 TEXT,
-      field3 TEXT
-    );
-  `);
-
-  return db;
-};
