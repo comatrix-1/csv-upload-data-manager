@@ -28,3 +28,30 @@ export const getData = async (req: Request, res: Response): Promise<void> => {
     res.status(500).send({ error: "Error while fetching data" });
   }
 };
+
+export const searchData = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { queryString } = req.query;
+
+    const db = await initDb();
+
+    let query = "SELECT * FROM data WHERE 1=1";
+    const queryParams: any[] = [];
+
+    if (queryString?.length) {
+      query += " AND (name LIKE ? OR email LIKE ? OR body LIKE ?)";
+      const searchTerm = `%${queryString}%`;
+      queryParams.push(searchTerm, searchTerm, searchTerm);
+    }
+
+    const data = await db.all(query, queryParams);
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: "Error while searching data" });
+  }
+};

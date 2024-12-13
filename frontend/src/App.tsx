@@ -1,123 +1,155 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
-  Container,
-  Button,
-  Form,
   Table,
   Pagination,
   Spinner,
   Alert,
+  Button,
+  Form,
 } from "react-bootstrap";
-import axios from "axios";
 
-const App: React.FC = () => {
-  const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [data, setData] = useState<any[]>([]);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+const App = () => {
+  const [data, setData] = useState<any[]>([]); // Data to display in the table
+  const [isLoading, setIsLoading] = useState<boolean>(false); // Loading state
+  const [currentPage, setCurrentPage] = useState<number>(1); // Current page number
+  const [totalPages, setTotalPages] = useState<number>(0); // Total pages
+  const [limit, setLimit] = useState<number>(10); // Number of items per page
+  const [searchQuery, setSearchQuery] = useState<string>(""); // Search query
+  const [file, setFile] = useState<File | null>(null); // Selected file for CSV upload
+  const [uploading, setUploading] = useState<boolean>(false); // Uploading state
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
 
-  // Handle CSV upload
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFile(e.target.files[0]);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    setIsUploading(true);
-    try {
-      const res = await axios.post("/api/data/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        onUploadProgress: (progressEvent: ProgressEvent) => {
-          if (progressEvent.total) {
-            setUploadProgress(
-              Math.round((progressEvent.loaded * 100) / progressEvent.total)
-            );
-          }
-        },
-      });
-
-      if (res.status === 200) {
-        fetchData();
-      }
-    } catch (error) {
-      console.error("Error uploading file:", error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
+  // Fetch data from the backend, including search query
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get(`/api/data/list`, {
-        params: { page, limit, search: searchQuery },
+      const res = await axios.get(`/api/data/search`, {
+        params: {
+          queryString: searchQuery,
+          page: currentPage,
+          limit,
+        },
       });
 
       if (Array.isArray(res.data)) {
         setData(res.data);
+        setTotalPages(Math.ceil(res.data.length / limit));
       } else {
         console.error("Received data is not an array:", res.data);
-        setData([]);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
-      setData([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    setPage(1);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery); // Set the debounced query
+    }, 500); // Adjust the delay as needed (500ms is common for debounce)
+
+    // Clean up the timeout when searchQuery changes
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (debouncedSearchQuery !== undefined) {
+      fetchData();
+    }
+  }, [currentPage, limit, debouncedSearchQuery]);
+
+  // Fetch data on initial load and when the page, limit, or search query changes
+  useEffect(() => {
+    fetchData();
+  }, [currentPage, limit, searchQuery]);
+
+  // Handle page change for pagination
+  const handlePaginationChange = (page: number) => {
+    setCurrentPage(page);
   };
 
-  const handlePaginationChange = (pageNumber: number) => {
-    setPage(pageNumber);
+  // Handle search input change
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+    setCurrentPage(1); // Reset to the first page when search query changes
+  };
+
+  // Handle file input change for CSV upload
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setFile(event.target.files[0]);
+    }
+  };
+
+  // Handle CSV file upload
+  const handleFileUpload = async () => {
+    if (!file) {
+      alert("Please select a CSV file to upload");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setUploading(true);
+    try {
+      const res = await axios.post("/api/data/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.data.success) {
+        alert("CSV file uploaded successfully!");
+        // After successful upload, fetch the latest data
+        fetchData();
+      } else {
+        alert("Error uploading CSV file");
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Error uploading CSV file");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
-    <Container className="mt-4">
-      <h1>CSV File Upload and Data List</h1>
+    <div className="container">
+      <h1>Data List</h1>
 
-      <Form.Group controlId="formFile" className="mb-3">
-        <Form.Label>Upload CSV File</Form.Label>
-        <Form.Control type="file" onChange={handleFileChange} />
-      </Form.Group>
+      {/* CSV Upload Form */}
+      <Form>
+        <Form.Group controlId="fileUpload" className="mb-3">
+          <Form.Label>Upload CSV</Form.Label>
+          <Form.Control type="file" accept=".csv" onChange={handleFileChange} />
+        </Form.Group>
+        <Button
+          variant="primary"
+          onClick={handleFileUpload}
+          disabled={uploading || !file}
+        >
+          {uploading ? "Uploading..." : "Upload CSV"}
+        </Button>
+      </Form>
 
-      <Button variant="primary" onClick={handleUpload} disabled={isUploading}>
-        {isUploading ? <Spinner animation="border" size="sm" /> : "Upload"}
-      </Button>
-      {isUploading && <div>Uploading: {uploadProgress}%</div>}
+      {/* Search Input */}
+      <input
+        type="text"
+        placeholder="Search..."
+        value={searchQuery}
+        onChange={handleSearchChange}
+        className="form-control mb-3"
+      />
 
-      <Form.Group className="my-4">
-        <Form.Label>Search Data</Form.Label>
-        <Form.Control
-          type="text"
-          placeholder="Search"
-          value={searchQuery}
-          onChange={handleSearch}
-        />
-      </Form.Group>
-
+      {/* Loading Spinner */}
       {isLoading ? (
         <Spinner animation="border" variant="primary" />
       ) : data.length === 0 ? (
         <Alert variant="warning">No data available.</Alert>
       ) : (
         <>
+          {/* Table displaying the data */}
           <Table striped bordered hover>
             <thead>
               <tr>
@@ -129,7 +161,7 @@ const App: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {data?.map((item: any) => (
+              {data.map((item: any) => (
                 <tr key={item.id}>
                   <td>{item.postId}</td>
                   <td>{item.id}</td>
@@ -141,23 +173,21 @@ const App: React.FC = () => {
             </tbody>
           </Table>
 
+          {/* Pagination Component */}
           <Pagination>
-            {Array.from(
-              { length: Math.ceil(data.length / limit) },
-              (_, index) => (
-                <Pagination.Item
-                  key={index + 1}
-                  active={page === index + 1}
-                  onClick={() => handlePaginationChange(index + 1)}
-                >
-                  {index + 1}
-                </Pagination.Item>
-              )
-            )}
+            {[...Array(totalPages)].map((_, index) => (
+              <Pagination.Item
+                key={index + 1}
+                active={currentPage === index + 1}
+                onClick={() => handlePaginationChange(index + 1)}
+              >
+                {index + 1}
+              </Pagination.Item>
+            ))}
           </Pagination>
         </>
       )}
-    </Container>
+    </div>
   );
 };
 
