@@ -17,6 +17,7 @@ yarn-error.log*
 
 # SQLite database file
 /data.db
+*.sqlite
 
 # Uploaded files
 /uploads/
