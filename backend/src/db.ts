@@ -13,11 +13,13 @@ export const initDb = async () => {
 
     // Ensure the table exists
     await dbInstance.exec(`
-      CREATE TABLE IF NOT EXISTS data (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS data (
+        post_id INTEGER NOT NULL,
+        id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
-        value TEXT NOT NULL
-      );
+        email TEXT NOT NULL,
+        body TEXT NOT NULL
+        );
     `);
   }
   return dbInstance;
