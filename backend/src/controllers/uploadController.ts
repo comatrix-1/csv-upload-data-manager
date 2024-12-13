@@ -28,6 +28,9 @@ export const handleUpload = async (
       try {
         const db = await initDb();
 
+        // Reset the table before inserting new data
+        await db.run("DELETE FROM data");
+
         // Validate and prepare data for insertion
         const preparedData = result.data.map((row: any) => [
           parseInt(row.postId, 10),
