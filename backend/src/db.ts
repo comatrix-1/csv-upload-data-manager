@@ -3,15 +3,14 @@ import { open } from "sqlite";
 
 let dbInstance: any;
 
-// Function to initialize the database connection
 export const initDb = async () => {
   if (!dbInstance) {
+    const isTestEnv = process.env.NODE_ENV === "test";
     dbInstance = await open({
-      filename: "./database.sqlite", // Path to your SQLite database file
+      filename: isTestEnv ? ":memory:" : "./database.sqlite",
       driver: sqlite3.Database,
     });
-
-    // Ensure the table exists
+   
     await dbInstance.exec(`
         CREATE TABLE IF NOT EXISTS data (
         post_id INTEGER NOT NULL,
