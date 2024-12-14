@@ -18,25 +18,31 @@ const App = () => {
   const [searchQuery, setSearchQuery] = useState<string>(""); // Search query
   const [file, setFile] = useState<File | null>(null); // Selected file for CSV upload
   const [uploading, setUploading] = useState<boolean>(false); // Uploading state
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
+
+  console.log("totalPages", totalPages);
 
   // Fetch data from the backend, including search query
   const fetchData = async () => {
+    console.log("fetchData()");
     setIsLoading(true);
     try {
       const res = await axios.get(`/api/data/search`, {
         params: {
-          queryString: searchQuery,
+          queryString: debouncedSearchQuery, // Use the debounced query
           page: currentPage,
           limit,
         },
       });
 
-      if (Array.isArray(res.data)) {
-        setData(res.data);
-        setTotalPages(Math.ceil(res.data.length / limit));
+      const responseData = res.data;
+      console.log("responseData", responseData);
+
+      if (Array.isArray(responseData.data)) {
+        setData(responseData.data);
+        setTotalPages(Math.ceil(responseData.totalPages / limit));
       } else {
-        console.error("Received data is not an array:", res.data);
+        console.error("Received data is not an array:", responseData.data);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -47,10 +53,9 @@ const App = () => {
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery); // Set the debounced query
-    }, 500); // Adjust the delay as needed (500ms is common for debounce)
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
 
-    // Clean up the timeout when searchQuery changes
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
@@ -58,32 +63,23 @@ const App = () => {
     if (debouncedSearchQuery !== undefined) {
       fetchData();
     }
-  }, [currentPage, limit, debouncedSearchQuery]);
+  }, [debouncedSearchQuery, currentPage, limit]);
 
-  // Fetch data on initial load and when the page, limit, or search query changes
-  useEffect(() => {
-    fetchData();
-  }, [currentPage, limit, searchQuery]);
-
-  // Handle page change for pagination
   const handlePaginationChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  // Handle search input change
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
-    setCurrentPage(1); // Reset to the first page when search query changes
+    setCurrentPage(1);
   };
 
-  // Handle file input change for CSV upload
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       setFile(event.target.files[0]);
     }
   };
 
-  // Handle CSV file upload
   const handleFileUpload = async () => {
     if (!file) {
       alert("Please select a CSV file to upload");
@@ -101,7 +97,6 @@ const App = () => {
 
       if (res.data.success) {
         alert("CSV file uploaded successfully!");
-        // After successful upload, fetch the latest data
         fetchData();
       } else {
         alert("Error uploading CSV file");
@@ -118,7 +113,6 @@ const App = () => {
     <div className="container">
       <h1>Data List</h1>
 
-      {/* CSV Upload Form */}
       <Form>
         <Form.Group controlId="fileUpload" className="mb-3">
           <Form.Label>Upload CSV</Form.Label>
@@ -133,7 +127,6 @@ const App = () => {
         </Button>
       </Form>
 
-      {/* Search Input */}
       <input
         type="text"
         placeholder="Search..."
@@ -142,14 +135,12 @@ const App = () => {
         className="form-control mb-3"
       />
 
-      {/* Loading Spinner */}
       {isLoading ? (
         <Spinner animation="border" variant="primary" />
       ) : data.length === 0 ? (
         <Alert variant="warning">No data available.</Alert>
       ) : (
         <>
-          {/* Table displaying the data */}
           <Table striped bordered hover>
             <thead>
               <tr>
@@ -163,7 +154,7 @@ const App = () => {
             <tbody>
               {data.map((item: any) => (
                 <tr key={item.id}>
-                  <td>{item.postId}</td>
+                  <td>{item.post_id}</td>
                   <td>{item.id}</td>
                   <td>{item.name}</td>
                   <td>{item.email}</td>
@@ -173,7 +164,6 @@ const App = () => {
             </tbody>
           </Table>
 
-          {/* Pagination Component */}
           <Pagination>
             {[...Array(totalPages)].map((_, index) => (
               <Pagination.Item

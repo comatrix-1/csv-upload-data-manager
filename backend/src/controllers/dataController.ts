@@ -1,44 +1,22 @@
 import { Request, Response } from "express";
 import { initDb } from "../db";
 
-export const getData = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { page = 1, limit = 10 } = req.query;
-
-    const db = await initDb();
-
-    const totalRecords = await db.get("SELECT COUNT(*) AS count FROM data");
-    const totalPages = Math.ceil(
-      totalRecords.count / parseInt(limit as string)
-    );
-
-    const data = await db.all("SELECT * FROM data LIMIT ? OFFSET ?", [
-      parseInt(limit as string),
-      (parseInt(page as string) - 1) * parseInt(limit as string),
-    ]);
-
-    res.status(200).json({
-      data,
-      totalRecords: totalRecords.count,
-      totalPages,
-      currentPage: parseInt(page as string),
-      limit: parseInt(limit as string),
-    });
-  } catch (error) {
-    res.status(500).send({ error: "Error while fetching data" });
-  }
-};
-
 export const searchData = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  console.log("searchData()");
   try {
-    const { queryString } = req.query;
+    const page = parseInt((req.query.page as string) || "1", 10);
+    const limit = parseInt((req.query.limit as string) || "10", 10);
+    const queryString = req.query.queryString as string;
+    console.log("searchData() :: page", page);
+    console.log("searchData() :: limit", limit);
+    console.log("searchData() :: queryString", queryString);
 
     const db = await initDb();
 
-    let query = "SELECT * FROM data WHERE 1=1";
+    let query = "SELECT COUNT(*) AS count FROM data WHERE 1=1";
     const queryParams: any[] = [];
 
     if (queryString?.length) {
@@ -47,9 +25,23 @@ export const searchData = async (
       queryParams.push(searchTerm, searchTerm, searchTerm);
     }
 
+    const totalRecords = await db.get(query, queryParams);
+
+    const totalPages = Math.ceil(totalRecords.count / limit);
+
+    const offset = (page - 1) * limit;
+    query = query.replace("COUNT(*) AS count", "*") + " LIMIT ? OFFSET ?";
+    queryParams.push(limit, offset);
+
     const data = await db.all(query, queryParams);
 
-    res.status(200).json(data);
+    res.status(200).json({
+      data,
+      totalRecords: totalRecords.count,
+      totalPages,
+      currentPage: page,
+      limit,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send({ error: "Error while searching data" });

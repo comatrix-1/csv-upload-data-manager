@@ -1,115 +1,116 @@
 import request from "supertest";
-import { app } from "../app";
+import express from "express";
+import { searchData } from "../controllers/dataController";
 import { initDb } from "../db";
 
-jest.mock("../db");
+jest.mock("../db", () => ({
+  initDb: jest.fn(),
+}));
 
-describe("Data Controller", () => {
-  let mockDb: any;
+describe("dataController tests", () => {
+  let app: express.Application;
+  let dbInstance: any;
 
   beforeAll(async () => {
-    mockDb = {
-      all: jest.fn(),
+    // Initialize Express app and mock the database connection
+    app = express();
+    app.get("/search", searchData);
+
+    // Mock the database instance returned by initDb
+    dbInstance = {
       get: jest.fn(),
+      all: jest.fn(),
       exec: jest.fn(),
     };
-    (initDb as jest.Mock).mockResolvedValue(mockDb);
+    (initDb as jest.Mock).mockResolvedValue(dbInstance);
 
-    mockDb.exec.mockResolvedValueOnce(undefined);
-    await mockDb.exec(`
-      INSERT INTO data (name, value, email, body)
-      VALUES
-        ('Item 1', 'Value 1', 'item1@example.com', 'Body of Item 1'),
-        ('Item 2', 'Value 2', 'item2@example.com', 'Body of Item 2'),
-        ('Item 3', 'Value 3', 'item3@example.com', 'Body of Item 3'),
-        ('Item 4', 'Value 4', 'item4@example.com', 'Body of Item 4'),
-        ('Item 5', 'Value 5', 'item5@example.com', 'Body of Item 5');
-    `);
-  });
-
-  afterAll(async () => {
-    mockDb.exec.mockResolvedValueOnce(undefined);
-    await mockDb.exec("DELETE FROM data");
-  });
-
-  it("should fetch paginated data with total records and pages", async () => {
-    mockDb.get.mockResolvedValueOnce({ count: 5 });
-    mockDb.all.mockResolvedValueOnce([
-      { name: "Item 1", value: "Value 1" },
-      { name: "Item 2", value: "Value 2" },
-      { name: "Item 3", value: "Value 3" },
+    // Mock the database schema
+    dbInstance.get.mockResolvedValue({ count: 100 });
+    dbInstance.all.mockResolvedValue([
+      {
+        post_id: 1,
+        id: 1,
+        name: "John Doe",
+        email: "john@example.com",
+        body: "Sample body 1",
+      },
+      {
+        post_id: 2,
+        id: 2,
+        name: "Jane Doe",
+        email: "jane@example.com",
+        body: "Sample body 2",
+      },
     ]);
-
-    const response = await request(app)
-      .get("/api/data/list?page=1&limit=3")
-      .expect("Content-Type", /json/)
-      .expect(200);
-
-    expect(response.body.data.length).toBe(3);
-    expect(response.body.totalRecords).toBe(5);
-    expect(response.body.totalPages).toBe(2);
-    expect(response.body.currentPage).toBe(1);
-    expect(response.body.limit).toBe(3);
   });
 
-  it("should return an error if an issue occurs while fetching data", async () => {
-    jest.spyOn(global.console, "error").mockImplementation(() => {});
-    (initDb as jest.Mock).mockRejectedValue(new Error("Database error"));
-
+  it("should return paginated search results", async () => {
+    // Perform a GET request with query parameters
     const response = await request(app)
-      .get("/api/data/list")
-      .expect("Content-Type", /json/)
-      .expect(500);
+      .get("/search")
+      .query({ page: "1", limit: "10", queryString: "John" });
 
-    expect(response.body.error).toBe("Error while fetching data");
-  });
-
-  it("should search data by a single query string across name, email, and body", async () => {
-    mockDb.all.mockResolvedValueOnce([
-      { post_id: "1", id: "1", name: "Item 1", email: "item1@example.com", body: "Body of Item 1" },
-      { post_id: "2", id: "2", name: "Item 2", email: "item2@example.com", body: "Body of Item 2" },
-    ]);
-  
-    const response = await request(app)
-      .get("/api/data/search?queryString=Item") // Search by a term that may match name, email, or body
-      .expect("Content-Type", /json/)
-      .expect(200);
-  
-    expect(response.body.length).toBe(2);
-    expect(response.body[0]).toMatchObject({
-      post_id: "1",
-      id: "1",
-      name: "Item 1",
-      email: "item1@example.com",
-      body: "Body of Item 1",
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      data: [
+        {
+          post_id: 1,
+          id: 1,
+          name: "John Doe",
+          email: "john@example.com",
+          body: "Sample body 1",
+        },
+        {
+          post_id: 2,
+          id: 2,
+          name: "Jane Doe",
+          email: "jane@example.com",
+          body: "Sample body 2",
+        },
+      ],
+      totalRecords: 100,
+      totalPages: 10,
+      currentPage: 1,
+      limit: 10,
     });
-    expect(response.body[1]).toMatchObject({
-      post_id: "2",
-      id: "2",
-      name: "Item 2",
-      email: "item2@example.com",
-      body: "Body of Item 2",
+
+    expect(dbInstance.get).toHaveBeenCalledWith(
+      "SELECT COUNT(*) AS count FROM data WHERE 1=1 AND (name LIKE ? OR email LIKE ? OR body LIKE ?)",
+      ["%John%", "%John%", "%John%"]
+    );
+    expect(dbInstance.all).toHaveBeenCalledWith(
+      "SELECT * FROM data WHERE 1=1 AND (name LIKE ? OR email LIKE ? OR body LIKE ?) LIMIT ? OFFSET ?",
+      ["%John%", "%John%", "%John%", 10, 0]
+    );
+  });
+
+  it("should return empty data if no query string matches", async () => {
+    dbInstance.all.mockResolvedValue([]);
+
+    const response = await request(app)
+      .get("/search")
+      .query({ page: "1", limit: "10", queryString: "NotExist" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      data: [],
+      totalRecords: 100,
+      totalPages: 10,
+      currentPage: 1,
+      limit: 10,
     });
   });
-  
 
-  it("should return an empty array when no matches are found for the query string", async () => {
-    mockDb.all.mockResolvedValueOnce([]);
+  it("should handle errors gracefully", async () => {
+    (dbInstance.get as jest.Mock).mockRejectedValue(
+      new Error("Database error")
+    );
 
     const response = await request(app)
-      .get("/api/data/search?queryString=NonExistentTerm")
-      .expect("Content-Type", /json/)
-      .expect(200);
+      .get("/search")
+      .query({ page: "1", limit: "10", queryString: "John" });
 
-    expect(response.body).toEqual([]);
-  });
-
-  it("should return an error if no query string is provided", async () => {
-    const response = await request(app)
-      .get("/api/data/search")
-      .expect("Content-Type", /json/)
-      .expect(400);
-
-    expect(response.body.error).toBe("Query string is required");
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: "Error while searching data" });
   });
 });
