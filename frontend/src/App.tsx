@@ -154,7 +154,7 @@ const App = () => {
             <tbody>
               {data.map((item: any) => (
                 <tr key={item.id}>
-                  <td>{item.post_id}</td>
+                  <td>{item.postId}</td>
                   <td>{item.id}</td>
                   <td>{item.name}</td>
                   <td>{item.email}</td>

@@ -13,9 +13,10 @@ export const searchData = async (
     console.log("searchData() :: page", page);
     console.log("searchData() :: limit", limit);
     console.log("searchData() :: queryString", queryString);
-
+    
     const db = await initDb();
-
+    console.log("searchData() :: db", db);
+    
     let query = "SELECT COUNT(*) AS count FROM data WHERE 1=1";
     const queryParams: any[] = [];
 
@@ -27,16 +28,27 @@ export const searchData = async (
 
     const totalRecords = await db.get(query, queryParams);
 
+    console.log("searchData() :: totalRecords :: " + totalRecords);
+    
     const totalPages = Math.ceil(totalRecords.count / limit);
-
+    
     const offset = (page - 1) * limit;
     query = query.replace("COUNT(*) AS count", "*") + " LIMIT ? OFFSET ?";
     queryParams.push(limit, offset);
-
+    
     const data = await db.all(query, queryParams);
+    console.log("searchData() :: data :: " + data);
+
+    const transformedData = data.map((row: any) => ({
+      postId: row.post_id,
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      body: row.body,
+    }));
 
     res.status(200).json({
-      data,
+      data: transformedData,
       totalRecords: totalRecords.count,
       totalPages,
       currentPage: page,
