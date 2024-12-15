@@ -27,7 +27,7 @@ In the root folder, run the following command:
    ```
    npm run dev
    ```
-The backend will run on http://localhost:3000 and the frontend will run on http://localhost:5173.
+The backend will run on http://localhost:3000 and the frontend will run on http://localhost:5173. Head to http://localhost:5173 to view the application.
 
 ### API Endpoints
 1. GET /api/data/health
@@ -55,3 +55,12 @@ Query Parameters:
 |----------------|----------------|
 | GET /api/data/search?queryString=example | Returns the records that match the search query. Default page 1, limit 10 results. |
 | GET /api/data/search?queryString=example?page=2&limit=10 | Returns the records that match the search query. Page 2, limit 10 results. |
+
+## Testing the application
+Unit tests have been written for the backend controllers.
+
+1. Navigate to the backend folder.
+2. Run tests
+   ```bash
+   npm run test
+   ```
