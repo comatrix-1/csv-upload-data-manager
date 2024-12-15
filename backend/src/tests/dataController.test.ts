@@ -12,11 +12,9 @@ describe("dataController tests", () => {
   let dbInstance: any;
 
   beforeAll(async () => {
-    // Initialize Express app and mock the database connection
     app = express();
     app.get("/search", searchData);
 
-    // Mock the database instance returned by initDb
     dbInstance = {
       get: jest.fn(),
       all: jest.fn(),
@@ -45,7 +43,6 @@ describe("dataController tests", () => {
   });
 
   it("should return paginated search results", async () => {
-    // Perform a GET request with query parameters
     const response = await request(app)
       .get("/search")
       .query({ page: "1", limit: "10", queryString: "John" });
@@ -54,14 +51,14 @@ describe("dataController tests", () => {
     expect(response.body).toEqual({
       data: [
         {
-          post_id: 1,
+          postId: 1,
           id: 1,
           name: "John Doe",
           email: "john@example.com",
           body: "Sample body 1",
         },
         {
-          post_id: 2,
+          postId: 2,
           id: 2,
           name: "Jane Doe",
           email: "jane@example.com",

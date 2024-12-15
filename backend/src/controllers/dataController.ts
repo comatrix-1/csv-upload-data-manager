@@ -13,30 +13,29 @@ export const searchData = async (
     console.log("searchData() :: page", page);
     console.log("searchData() :: limit", limit);
     console.log("searchData() :: queryString", queryString);
-    
+
     const db = await initDb();
     console.log("searchData() :: db", db);
-    
-    let query = "SELECT COUNT(*) AS count FROM data WHERE 1=1";
-    const queryParams: any[] = [];
+
+    let countQuery = "SELECT COUNT(*) AS count FROM data WHERE 1=1";
+    const countQueryParams: any[] = [];
 
     if (queryString?.length) {
-      query += " AND (name LIKE ? OR email LIKE ? OR body LIKE ?)";
+      countQuery += " AND (name LIKE ? OR email LIKE ? OR body LIKE ?)";
       const searchTerm = `%${queryString}%`;
-      queryParams.push(searchTerm, searchTerm, searchTerm);
+      countQueryParams.push(searchTerm, searchTerm, searchTerm);
     }
 
-    const totalRecords = await db.get(query, queryParams);
+    const totalRecords = await db.get(countQuery, countQueryParams);
 
-    console.log("searchData() :: totalRecords :: " + totalRecords);
-    
     const totalPages = Math.ceil(totalRecords.count / limit);
-    
+
     const offset = (page - 1) * limit;
-    query = query.replace("COUNT(*) AS count", "*") + " LIMIT ? OFFSET ?";
-    queryParams.push(limit, offset);
-    
-    const data = await db.all(query, queryParams);
+    let dataQuery =
+      "SELECT * FROM data WHERE 1=1 AND (name LIKE ? OR email LIKE ? OR body LIKE ?) LIMIT ? OFFSET ?";
+    const dataQueryParams = [...countQueryParams, limit, offset];
+
+    const data = await db.all(dataQuery, dataQueryParams);
     console.log("searchData() :: data :: " + data);
 
     const transformedData = data.map((row: any) => ({
@@ -55,7 +54,6 @@ export const searchData = async (
       limit,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).send({ error: "Error while searching data" });
   }
 };
