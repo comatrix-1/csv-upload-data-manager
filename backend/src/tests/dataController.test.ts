@@ -98,6 +98,53 @@ describe("dataController tests", () => {
     });
   });
 
+  it("should return limited data if empty query string is provided", async () => {
+    dbInstance.all.mockResolvedValue([
+      {
+        postId: 1,
+        id: 1,
+        name: "John Doe",
+        email: "john@example.com",
+        body: "Sample body 1",
+      },
+      {
+        postId: 2,
+        id: 2,
+        name: "Jane Doe",
+        email: "jane@example.com",
+        body: "Sample body 2",
+      },
+    ]);
+
+    const response = await request(app)
+      .get("/search")
+      .query({ page: "1", limit: "10", queryString: "" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      data: [
+        {
+          postId: 1,
+          id: 1,
+          name: "John Doe",
+          email: "john@example.com",
+          body: "Sample body 1",
+        },
+        {
+          postId: 2,
+          id: 2,
+          name: "Jane Doe",
+          email: "jane@example.com",
+          body: "Sample body 2",
+        },
+      ],
+      totalRecords: 100,
+      totalPages: 10,
+      currentPage: 1,
+      limit: 10,
+    });
+  });
+
   it("should handle errors gracefully", async () => {
     (dbInstance.get as jest.Mock).mockRejectedValue(
       new Error("Database error")

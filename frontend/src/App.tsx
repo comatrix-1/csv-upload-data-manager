@@ -14,29 +14,24 @@ const App = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false); // Loading state
   const [currentPage, setCurrentPage] = useState<number>(1); // Current page number
   const [totalPages, setTotalPages] = useState<number>(0); // Total pages
-  const [limit, setLimit] = useState<number>(10); // Number of items per page
+  const limit = 10;
   const [searchQuery, setSearchQuery] = useState<string>(""); // Search query
   const [file, setFile] = useState<File | null>(null); // Selected file for CSV upload
   const [uploading, setUploading] = useState<boolean>(false); // Uploading state
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
 
-  console.log("totalPages", totalPages);
-
-  // Fetch data from the backend, including search query
   const fetchData = async () => {
-    console.log("fetchData()");
     setIsLoading(true);
     try {
       const res = await axios.get(`/api/data/search`, {
         params: {
-          queryString: debouncedSearchQuery, // Use the debounced query
+          queryString: debouncedSearchQuery,
           page: currentPage,
           limit,
         },
       });
 
       const responseData = res.data;
-      console.log("responseData", responseData);
 
       if (Array.isArray(responseData.data)) {
         setData(responseData.data);
@@ -110,10 +105,10 @@ const App = () => {
   };
 
   return (
-    <div className="container">
-      <h1>Data List</h1>
+    <div className="d-flex flex-column align-items-center justify-content-center min-vh-100 w-vh-100">
+      <h1 className="text-center mb-4">Data List</h1>
 
-      <Form>
+      <Form className="mb-4 w-50">
         <Form.Group controlId="fileUpload" className="mb-3">
           <Form.Label>Upload CSV</Form.Label>
           <Form.Control type="file" accept=".csv" onChange={handleFileChange} />
@@ -122,26 +117,27 @@ const App = () => {
           variant="primary"
           onClick={handleFileUpload}
           disabled={uploading || !file}
+          className="w-100"
         >
           {uploading ? "Uploading..." : "Upload CSV"}
         </Button>
       </Form>
 
-      <input
+      <Form.Control
         type="text"
         placeholder="Search..."
         value={searchQuery}
         onChange={handleSearchChange}
-        className="form-control mb-3"
+        className="mb-4 w-50"
       />
 
       {isLoading ? (
-        <Spinner animation="border" variant="primary" />
+        <Spinner animation="border" variant="primary" role="status" />
       ) : data.length === 0 ? (
         <Alert variant="warning">No data available.</Alert>
       ) : (
         <>
-          <Table striped bordered hover>
+          <Table striped bordered hover className="w-75 text-center">
             <thead>
               <tr>
                 <th>Post ID</th>
@@ -164,7 +160,7 @@ const App = () => {
             </tbody>
           </Table>
 
-          <Pagination>
+          <Pagination className="mt-4">
             {[...Array(totalPages)].map((_, index) => (
               <Pagination.Item
                 key={index + 1}

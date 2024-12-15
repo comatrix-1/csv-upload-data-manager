@@ -4,7 +4,7 @@
   "description": "This project consists of a backend API and a frontend application. The backend serves on port `3000` and the frontend on port `5173`. The project allows uploading files, listing data from a database, and searching through records by various fields.",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run start --prefix backend\"",
+    "dev": "concurrently \"npm run start --prefix backend\" \"npm run dev --prefix frontend\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
